@@ -30,11 +30,9 @@ export const VotePanel = ({
     setHasVoted(userVote?.vote || false);
   }, [votes, participantId]);
 
-  const activeParticipants = participants.filter((p) => p.is_connected);
+  const activeParticipants = participants.filter((p) => p.is_connected && p.id !== currentFeedOwnerId);
   const yesVotes = votes.filter((v) => v.vote).length;
-  const votePercentage = activeParticipants.length > 0 
-    ? (yesVotes / activeParticipants.length) * 100 
-    : 0;
+  const votePercentage = activeParticipants.length > 0 ? (yesVotes / activeParticipants.length) * 100 : 0;
 
   const handleVote = async () => {
     setIsVoting(true);
@@ -42,33 +40,26 @@ export const VotePanel = ({
       const newVoteValue = !hasVoted;
 
       // Upsert vote
-      const { error: voteError } = await supabase
-        .from("votes")
-        .upsert({
-          session_id: sessionId,
-          user_id: participantId,
-          vote: newVoteValue,
-          updated_at: new Date().toISOString(),
-        });
+      const { error: voteError } = await supabase.from("votes").upsert({
+        session_id: sessionId,
+        user_id: participantId,
+        vote: newVoteValue,
+        updated_at: new Date().toISOString(),
+      });
 
       if (voteError) throw voteError;
 
       // Check if threshold reached
       const updatedYesVotes = newVoteValue ? yesVotes + 1 : yesVotes - 1;
-      const thresholdReached = 
-        updatedYesVotes / activeParticipants.length >= voteThreshold;
+      const thresholdReached = updatedYesVotes / activeParticipants.length >= voteThreshold;
 
       if (thresholdReached && newVoteValue) {
         // Find eligible participants (not current owner)
-        const eligibleParticipants = activeParticipants.filter(
-          (p) => p.id !== currentFeedOwnerId
-        );
+        const eligibleParticipants = activeParticipants.filter((p) => p.id !== currentFeedOwnerId);
 
         if (eligibleParticipants.length > 0) {
           // Pick random new owner
-          const randomIndex = Math.floor(
-            Math.random() * eligibleParticipants.length
-          );
+          const randomIndex = Math.floor(Math.random() * eligibleParticipants.length);
           const newOwner = eligibleParticipants[randomIndex];
 
           // Update session
@@ -80,10 +71,7 @@ export const VotePanel = ({
           if (updateError) throw updateError;
 
           // Reset all votes
-          const { error: deleteError } = await supabase
-            .from("votes")
-            .delete()
-            .eq("session_id", sessionId);
+          const { error: deleteError } = await supabase.from("votes").delete().eq("session_id", sessionId);
 
           if (deleteError) throw deleteError;
 
@@ -109,9 +97,7 @@ export const VotePanel = ({
     <div className="bg-card rounded-xl border border-border shadow-card p-4 space-y-4">
       <div>
         <h2 className="text-lg font-semibold mb-2">Switch Algorithm</h2>
-        <p className="text-sm text-muted-foreground">
-          Vote to switch whose feed plays next
-        </p>
+        <p className="text-sm text-muted-foreground">Vote to switch whose feed plays next</p>
       </div>
 
       <Button
@@ -129,9 +115,7 @@ export const VotePanel = ({
           <span className="text-muted-foreground">
             {yesVotes} / {activeParticipants.length} voted
           </span>
-          <span className="text-muted-foreground">
-            {Math.round(voteThreshold * 100)}% needed
-          </span>
+          <span className="text-muted-foreground">{Math.round(voteThreshold * 100)}% needed</span>
         </div>
         <Progress value={votePercentage} className="h-2" />
       </div>
