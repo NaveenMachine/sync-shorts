@@ -229,15 +229,60 @@ const Session = () => {
             .then(() => {});
         });
       })
-      .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
+      .on("presence", { event: "leave" }, async ({ key, leftPresences }) => {
         console.log("User left:", key);
-        leftPresences.forEach((presence: any) => {
-          supabase
+        
+        for (const presence of leftPresences) {
+          await supabase
             .from("participants")
             .update({ is_connected: false, last_seen_at: new Date().toISOString() })
-            .eq("id", presence.participant_id)
-            .then(() => {});
-        });
+            .eq("id", presence.participant_id);
+          
+          // Check if the leaving user is the current algorithm owner
+          if (session?.current_feed_user_id === presence.participant_id) {
+            console.log("Algorithm owner left, selecting new owner...");
+            
+            // Get all connected participants except the one leaving
+            const { data: connectedParticipants } = await supabase
+              .from("participants")
+              .select("*")
+              .eq("session_id", sessionId)
+              .eq("is_connected", true)
+              .neq("id", presence.participant_id);
+            
+            if (connectedParticipants && connectedParticipants.length > 0) {
+              // Select random participant
+              const newOwner = connectedParticipants[
+                Math.floor(Math.random() * connectedParticipants.length)
+              ];
+              
+              // Update session with new owner
+              await supabase
+                .from("sessions")
+                .update({ current_feed_user_id: newOwner.id })
+                .eq("id", sessionId);
+              
+              // Create feed for new owner if it doesn't exist
+              const { data: existingFeed } = await supabase
+                .from("feeds")
+                .select("*")
+                .eq("user_id", newOwner.id)
+                .maybeSingle();
+              
+              if (!existingFeed) {
+                await supabase.from("feeds").insert({
+                  user_id: newOwner.id,
+                  session_id: sessionId,
+                  items: createPlaceholderFeed(),
+                  pointer_index: 0,
+                });
+              }
+              
+              console.log("New algorithm owner assigned:", newOwner.display_name);
+              toast.success(`${newOwner.display_name} is now the algorithm owner`);
+            }
+          }
+        }
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
