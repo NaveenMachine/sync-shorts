@@ -257,9 +257,17 @@ const Session = () => {
           table: "votes",
           filter: `session_id=eq.${sessionId}`,
         },
-        (payload) => {
+        async (payload) => {
           console.log("Votes updated:", payload);
-          loadSessionData();
+          // Only refetch votes instead of all data to prevent flashing
+          const { data: votesData } = await supabase
+            .from("votes")
+            .select("*")
+            .eq("session_id", sessionId);
+          
+          if (votesData) {
+            setVotes(votesData);
+          }
         }
       )
       .subscribe();
