@@ -1,14 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { SkipForward } from "lucide-react";
-import { useEffect, useRef } from "react";
-
-// YouTube IFrame API types
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
 
 interface VideoPlayerProps {
   videoId: string | null;
@@ -25,63 +16,17 @@ export const VideoPlayer = ({
   onNextVideo,
   isAlgorithmOwner,
 }: VideoPlayerProps) => {
-  const playerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Load YouTube IFrame API
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    }
-
-    // Initialize player when API is ready
-    const initPlayer = () => {
-      if (videoId && containerRef.current && window.YT && window.YT.Player) {
-        // Clear container
-        containerRef.current.innerHTML = '<div id="youtube-player"></div>';
-        
-        playerRef.current = new window.YT.Player('youtube-player', {
-          videoId: videoId,
-          playerVars: {
-            autoplay: 1,
-            playsinline: 1,
-            rel: 0,
-          },
-          events: {
-            onStateChange: (event: any) => {
-              // YT.PlayerState.ENDED = 0
-              if (event.data === 0) {
-                console.log("Video ended, playing next...");
-                onNextVideo();
-              }
-            },
-          },
-        });
-      }
-    };
-
-    if (window.YT && window.YT.Player) {
-      initPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = initPlayer;
-    }
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-      }
-    };
-  }, [videoId, onNextVideo]);
-
   return (
     <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
       {/* Video Container */}
       <div className="relative aspect-[9/16] bg-black max-w-md mx-auto">
         {videoId ? (
-          <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+          <iframe
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             <div className="text-center space-y-2">
