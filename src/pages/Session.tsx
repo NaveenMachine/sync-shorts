@@ -114,14 +114,29 @@ const Session = () => {
           .maybeSingle();
 
         if (!feedData) {
+          // Get algorithm owner info
+          const algorithmOwner = participantsData?.find(
+            (p) => p.id === sessionData.current_feed_user_id
+          );
+          
           // Fetch real YouTube feed
           let feedItems = [];
           try {
             console.log("Attempting to fetch YouTube feed...");
+            
+            // Use Chris's personal API key if he's the algorithm owner
+            const apiKey = algorithmOwner?.display_name === "Chris" 
+              ? "AIzaSyAKwIqmyWaR4faYMVwewf9-A8DjswxKVD4" 
+              : undefined;
+            
             const { data: youtubeData, error: youtubeError } = await supabase.functions.invoke(
               "fetch-youtube-feed",
               {
-                body: { query: "funny shorts trending", maxResults: 50 },
+                body: { 
+                  query: "funny shorts trending", 
+                  maxResults: 50,
+                  apiKey 
+                },
               }
             );
 
