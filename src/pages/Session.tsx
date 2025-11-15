@@ -10,6 +10,36 @@ import { ParticipantsList } from "@/components/session/ParticipantsList";
 import { ChatPanel } from "@/components/session/ChatPanel";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
+const createPlaceholderFeed = () => {
+  return [
+    { videoId: "dQw4w9WgXcQ", title: "Rick Astley - Never Gonna Give You Up", thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg" },
+    { videoId: "jNQXAC9IVRw", title: "Me at the zoo", thumbnail: "https://img.youtube.com/vi/jNQXAC9IVRw/maxresdefault.jpg" },
+    { videoId: "9bZkp7q19f0", title: "PSY - GANGNAM STYLE", thumbnail: "https://img.youtube.com/vi/9bZkp7q19f0/maxresdefault.jpg" },
+    { videoId: "kJQP7kiw5Fk", title: "Luis Fonsi - Despacito", thumbnail: "https://img.youtube.com/vi/kJQP7kiw5Fk/maxresdefault.jpg" },
+    { videoId: "OPf0YbXqDm0", title: "Mark Ronson - Uptown Funk", thumbnail: "https://img.youtube.com/vi/OPf0YbXqDm0/maxresdefault.jpg" },
+    { videoId: "RgKAFK5djSk", title: "Wiz Khalifa - See You Again", thumbnail: "https://img.youtube.com/vi/RgKAFK5djSk/maxresdefault.jpg" },
+    { videoId: "CevxZvSJLk8", title: "Katy Perry - Roar", thumbnail: "https://img.youtube.com/vi/CevxZvSJLk8/maxresdefault.jpg" },
+    { videoId: "fRh_vgS2dFE", title: "Justin Bieber - Sorry", thumbnail: "https://img.youtube.com/vi/fRh_vgS2dFE/maxresdefault.jpg" },
+    { videoId: "lXMskKTw3Bc", title: "Major Lazer - Lean On", thumbnail: "https://img.youtube.com/vi/lXMskKTw3Bc/maxresdefault.jpg" },
+    { videoId: "09R8_2nJtjg", title: "Maroon 5 - Sugar", thumbnail: "https://img.youtube.com/vi/09R8_2nJtjg/maxresdefault.jpg" },
+    { videoId: "hT_nvWreIhg", title: "OneRepublic - Counting Stars", thumbnail: "https://img.youtube.com/vi/hT_nvWreIhg/maxresdefault.jpg" },
+    { videoId: "nfWlot6h_JM", title: "Taylor Swift - Shake It Off", thumbnail: "https://img.youtube.com/vi/nfWlot6h_JM/maxresdefault.jpg" },
+    { videoId: "JGwWNGJdvx8", title: "Ed Sheeran - Shape of You", thumbnail: "https://img.youtube.com/vi/JGwWNGJdvx8/maxresdefault.jpg" },
+    { videoId: "fLexgOxsZu0", title: "Bruno Mars - Uptown Funk", thumbnail: "https://img.youtube.com/vi/fLexgOxsZu0/maxresdefault.jpg" },
+    { videoId: "pRpeEdMmmQ0", title: "Shakira - Waka Waka", thumbnail: "https://img.youtube.com/vi/pRpeEdMmmQ0/maxresdefault.jpg" },
+    { videoId: "YQHsXMglC9A", title: "Adele - Hello", thumbnail: "https://img.youtube.com/vi/YQHsXMglC9A/maxresdefault.jpg" },
+    { videoId: "iLBBRuVDOo4", title: "Carly Rae Jepsen - Call Me Maybe", thumbnail: "https://img.youtube.com/vi/iLBBRuVDOo4/maxresdefault.jpg" },
+    { videoId: "3tmd-ClpJxA", title: "Pharrell Williams - Happy", thumbnail: "https://img.youtube.com/vi/3tmd-ClpJxA/maxresdefault.jpg" },
+    { videoId: "PT2_F-1esPk", title: "The Chainsmokers - Closer", thumbnail: "https://img.youtube.com/vi/PT2_F-1esPk/maxresdefault.jpg" },
+    { videoId: "e-ORhEE9VVg", title: "Taylor Swift - Blank Space", thumbnail: "https://img.youtube.com/vi/e-ORhEE9VVg/maxresdefault.jpg" },
+    { videoId: "kffacxfA7G4", title: "Justin Bieber - Baby", thumbnail: "https://img.youtube.com/vi/kffacxfA7G4/maxresdefault.jpg" },
+    { videoId: "ru0K8uYEZWw", title: "Macklemore - Can't Hold Us", thumbnail: "https://img.youtube.com/vi/ru0K8uYEZWw/maxresdefault.jpg" },
+    { videoId: "450p7goxZqg", title: "Avicii - Wake Me Up", thumbnail: "https://img.youtube.com/vi/450p7goxZqg/maxresdefault.jpg" },
+    { videoId: "uelHwf8o7_U", title: "Eminem - Love The Way You Lie", thumbnail: "https://img.youtube.com/vi/uelHwf8o7_U/maxresdefault.jpg" },
+    { videoId: "2vjPBrBU-TM", title: "Sia - Chandelier", thumbnail: "https://img.youtube.com/vi/2vjPBrBU-TM/maxresdefault.jpg" },
+  ];
+};
+
 const Session = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [searchParams] = useSearchParams();
@@ -85,25 +115,39 @@ const Session = () => {
 
         if (!feedData) {
           // Fetch real YouTube feed
+          let feedItems = [];
           try {
-            const { data: youtubeData } = await supabase.functions.invoke(
+            console.log("Attempting to fetch YouTube feed...");
+            const { data: youtubeData, error: youtubeError } = await supabase.functions.invoke(
               "fetch-youtube-feed",
               {
                 body: { query: "funny shorts trending", maxResults: 50 },
               }
             );
 
-            if (youtubeData?.items) {
-              await supabase.from("feeds").insert({
-                user_id: sessionData.current_feed_user_id,
-                session_id: sessionId,
-                items: youtubeData.items,
-                pointer_index: 0,
-              });
+            if (youtubeError) {
+              console.error("YouTube API error:", youtubeError);
+              feedItems = createPlaceholderFeed();
+            } else if (youtubeData?.items && youtubeData.items.length > 0) {
+              feedItems = youtubeData.items;
+              console.log("Successfully fetched YouTube feed with", feedItems.length, "items");
+            } else {
+              console.log("No items returned from YouTube API, using placeholder feed");
+              feedItems = createPlaceholderFeed();
             }
-          } catch (err) {
-            console.error("Error fetching YouTube feed:", err);
+          } catch (error) {
+            console.error("Failed to fetch YouTube feed:", error);
+            feedItems = createPlaceholderFeed();
           }
+
+          // Insert feed with either YouTube data or placeholder
+          await supabase.from("feeds").insert({
+            user_id: sessionData.current_feed_user_id,
+            session_id: sessionId,
+            items: feedItems,
+            pointer_index: 0,
+          });
+          console.log("Feed initialized with", feedItems.length, "videos");
         }
       }
 
