@@ -11,12 +11,12 @@ serve(async (req) => {
   }
 
   try {
-    const { query = 'shorts', maxResults = 50, apiKey } = await req.json();
-    
-    const YOUTUBE_API_KEY = apiKey || Deno.env.get('YOUTUBE_API_KEY');
+    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
     if (!YOUTUBE_API_KEY) {
       throw new Error('YOUTUBE_API_KEY not configured');
     }
+
+    const { query = 'shorts', maxResults = 50 } = await req.json();
 
     console.log('Fetching YouTube feed with query:', query);
 
