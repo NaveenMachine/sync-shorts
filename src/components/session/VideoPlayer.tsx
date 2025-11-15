@@ -55,16 +55,16 @@ export const VideoPlayer = ({
             )}
           </div>
 
-          <Button 
-            onClick={onNextVideo} 
-            size="sm" 
-            className="gap-2"
-            disabled={!isAlgorithmOwner}
-            title={!isAlgorithmOwner ? "Only the algorithm owner can skip videos" : "Skip to next video"}
-          >
-            <SkipForward className="w-4 h-4" />
-            Next
-          </Button>
+          {isAlgorithmOwner && (
+            <Button 
+              onClick={onNextVideo} 
+              size="sm" 
+              className="gap-2"
+            >
+              <SkipForward className="w-4 h-4" />
+              Next
+            </Button>
+          )}
         </div>
       </div>
     </div>
