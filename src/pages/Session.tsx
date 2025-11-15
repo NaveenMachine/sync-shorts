@@ -7,6 +7,7 @@ import { VideoPlayer } from "@/components/session/VideoPlayer";
 import { QueuePanel } from "@/components/session/QueuePanel";
 import { VotePanel } from "@/components/session/VotePanel";
 import { ParticipantsList } from "@/components/session/ParticipantsList";
+import { ChatPanel } from "@/components/session/ChatPanel";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 const Session = () => {
@@ -67,6 +68,38 @@ const Session = () => {
           (p) => p.id === sessionData.current_feed_user_id
         );
         setCurrentFeedOwner(feedOwner);
+      }
+
+      // Initialize feed if not exists
+      if (sessionData.current_feed_user_id) {
+        const { data: feedData } = await supabase
+          .from("feeds")
+          .select("*")
+          .eq("user_id", sessionData.current_feed_user_id)
+          .maybeSingle();
+
+        if (!feedData) {
+          // Fetch real YouTube feed
+          try {
+            const { data: youtubeData } = await supabase.functions.invoke(
+              "fetch-youtube-feed",
+              {
+                body: { query: "funny shorts trending", maxResults: 50 },
+              }
+            );
+
+            if (youtubeData?.items) {
+              await supabase.from("feeds").insert({
+                user_id: sessionData.current_feed_user_id,
+                session_id: sessionId,
+                items: youtubeData.items,
+                pointer_index: 0,
+              });
+            }
+          } catch (err) {
+            console.error("Error fetching YouTube feed:", err);
+          }
+        }
       }
 
       // Load queue
@@ -263,12 +296,17 @@ const Session = () => {
             />
           </div>
 
-          {/* Right Column - Queue */}
-          <div className="lg:order-3">
+          {/* Right Column - Queue & Chat */}
+          <div className="space-y-4 lg:order-3">
             <QueuePanel
               sessionId={sessionId!}
               participantId={participantId!}
               queueItems={queueItems}
+            />
+            <ChatPanel
+              sessionId={sessionId!}
+              participantId={participantId!}
+              participants={participants}
             />
           </div>
         </div>
