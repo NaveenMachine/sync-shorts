@@ -24,6 +24,7 @@ const Session = () => {
   const [loading, setLoading] = useState(true);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (!sessionId || !participantId) {
@@ -33,10 +34,14 @@ const Session = () => {
 
     loadSessionData();
     setupRealtimeSubscription();
+    setupPresenceTracking();
 
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
+      }
+      if (presenceChannelRef.current) {
+        supabase.removeChannel(presenceChannelRef.current);
       }
     };
   }, [sessionId, participantId]);
@@ -128,6 +133,78 @@ const Session = () => {
       toast.error("Failed to load session");
       navigate("/");
     }
+  };
+
+  const setupPresenceTracking = async () => {
+    // Mark this participant as connected
+    await supabase
+      .from("participants")
+      .update({ is_connected: true, last_seen_at: new Date().toISOString() })
+      .eq("id", participantId);
+
+    const presenceChannel = supabase.channel(`presence:${sessionId}`, {
+      config: {
+        presence: {
+          key: participantId,
+        },
+      },
+    });
+
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState();
+        const presentIds = Object.keys(state).flatMap((key) =>
+          state[key].map((presence: any) => presence.participant_id)
+        );
+
+        // Update all participants in this session
+        supabase
+          .from("participants")
+          .select("id")
+          .eq("session_id", sessionId)
+          .then(({ data: allParticipants }) => {
+            if (allParticipants) {
+              allParticipants.forEach((p) => {
+                const isPresent = presentIds.includes(p.id);
+                supabase
+                  .from("participants")
+                  .update({ is_connected: isPresent })
+                  .eq("id", p.id)
+                  .then(() => {});
+              });
+            }
+          });
+      })
+      .on("presence", { event: "join" }, ({ key, newPresences }) => {
+        console.log("User joined:", key);
+        newPresences.forEach((presence: any) => {
+          supabase
+            .from("participants")
+            .update({ is_connected: true, last_seen_at: new Date().toISOString() })
+            .eq("id", presence.participant_id)
+            .then(() => {});
+        });
+      })
+      .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
+        console.log("User left:", key);
+        leftPresences.forEach((presence: any) => {
+          supabase
+            .from("participants")
+            .update({ is_connected: false, last_seen_at: new Date().toISOString() })
+            .eq("id", presence.participant_id)
+            .then(() => {});
+        });
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({
+            participant_id: participantId,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    presenceChannelRef.current = presenceChannel;
   };
 
   const setupRealtimeSubscription = () => {
