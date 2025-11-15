@@ -467,6 +467,7 @@ const Session = () => {
               source={session?.current_source}
               feedOwnerName={currentFeedOwner?.display_name}
               onNextVideo={handleNextVideo}
+              isAlgorithmOwner={participantId === session?.current_feed_user_id}
             />
           </div>
 
