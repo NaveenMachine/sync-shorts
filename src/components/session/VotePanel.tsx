@@ -88,26 +88,30 @@ export const VotePanel = ({
     }
   };
 
-  // Don't show if user is the current feed owner or only 1 participant
-  if (currentFeedOwnerId === participantId || activeParticipants.length <= 1) {
+  // Don't show if only 1 participant
+  if (activeParticipants.length <= 1) {
     return null;
   }
+
+  const isOwner = currentFeedOwnerId === participantId;
 
   return (
     <div className="bg-card rounded-xl border border-border shadow-card p-4 space-y-4">
       <div>
         <h2 className="text-lg font-semibold mb-2">Switch Algorithm</h2>
-        <p className="text-sm text-muted-foreground">Vote to switch whose feed plays next</p>
+        <p className="text-sm text-muted-foreground">
+          {isOwner ? "You're the algorithm owner - others can vote to switch" : "Vote to switch whose feed plays next"}
+        </p>
       </div>
 
       <Button
         onClick={handleVote}
-        disabled={isVoting}
+        disabled={isVoting || isOwner}
         variant={hasVoted ? "destructive" : "secondary"}
         className="w-full"
       >
         <ThumbsDown className="w-4 h-4 mr-2" />
-        {hasVoted ? "Remove Vote" : "Vote to Switch"}
+        {isOwner ? "You're the Owner" : hasVoted ? "Remove Vote" : "Vote to Switch"}
       </Button>
 
       <div className="space-y-2">
